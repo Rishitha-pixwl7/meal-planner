@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  passwordHash String
+  budgetCents  Int            @default(5000)
+  createdAt    DateTime       @default(now())
+
+  emailVerifiedAt     DateTime?
+  verifyCodeHash      String?
+  verifyCodeExpiresAt DateTime?
+  verifyCodeSentAt    DateTime?
+  verifyAttempts      Int       @default(0)
+
+  recipes      Recipe[]
+  planEntries  PlanEntry[]
+  groceryChecks GroceryCheck[]
+}
+
+model Recipe {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  costCents   Int          // per serving
+  minutes     Int
+  meals       String[]
+  cuisine     String       @default("")
+  createdAt   DateTime     @default(now())
+  ingredients Ingredient[]
+  planEntries PlanEntry[]
+
+  @@index([userId])
+}
+
+model Ingredient {
+  id       Int    @id @default(autoincrement())
+  recipeId Int
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  name     String
+  quantity Float  // per serving
+  unit     String // "" for whole items
+}
+
+model PlanEntry {
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart String // Monday, YYYY-MM-DD
+  day       Int    // 0 = Monday
+  meal      String
+  recipeId  Int
+  recipe    Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart, day, meal])
+}
+
+model GroceryCheck {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart String
+  itemKey   String  // "name|unit"
+  checked   Boolean
+
+  @@unique([userId, weekStart, itemKey])
+}
